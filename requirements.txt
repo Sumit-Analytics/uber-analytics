@@ -1,0 +1,29 @@
+# Uber Analytics ETL Pipeline
+# Python 3.12+
+
+# Core data processing
+pandas==2.2.2
+numpy==1.26.4
+
+# Database
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# HTTP / API ingestion
+requests==2.31.0
+
+# Geospatial
+geopy==2.4.1
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.7.1
+
+# Logging & monitoring
+structlog==24.2.0
+
+# Testing
+pytest==8.2.0
+pytest-cov==5.0.0
+faker==24.14.0

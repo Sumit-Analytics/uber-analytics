@@ -1,0 +1,30 @@
+# Virtual environment
+analyticsvenv/
+
+# Environment variables (contains your DB password)
+.env
+
+# Logs and reports
+logs/
+reports/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Database files
+*.db
+*.sqlite3
+
+# Power BI (optional — large binary file)
+*.pbix
+
+# VS Code settings
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini

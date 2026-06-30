@@ -1,0 +1,210 @@
+// ============================================================
+// powerbi_measures.dax
+// Uber Analytics — Power BI DAX Measure Library
+// Connect Power BI Desktop via DirectQuery to the warehouse views
+// ============================================================
+
+
+// ---- CORE KPI MEASURES ----------------------------------------
+
+Total Trips =
+COUNTROWS(fact_trips)
+
+
+Gross Revenue =
+SUM(fact_trips[gross_revenue])
+
+
+Platform Revenue =
+SUM(fact_trips[platform_fee])
+
+
+Driver Payouts =
+SUM(fact_trips[driver_payout])
+
+
+Avg Fare =
+AVERAGE(fact_trips[base_fare])
+
+
+Avg Surge Multiplier =
+AVERAGE(fact_trips[surge_multiplier])
+
+
+Avg Trip Duration (min) =
+AVERAGE(fact_trips[duration_minutes])
+
+
+Avg Trip Distance (km) =
+AVERAGE(fact_trips[trip_distance_km])
+
+
+Avg Rider Rating =
+AVERAGE(fact_trips[rating_by_rider])
+
+
+// ---- PERIOD-OVER-PERIOD MEASURES ------------------------------
+
+Revenue MoM % =
+VAR CurrentRev  = [Gross Revenue]
+VAR PrevRev     = CALCULATE([Gross Revenue], DATEADD(dim_time[date_actual], -1, MONTH))
+RETURN
+    IF(
+        NOT ISBLANK(PrevRev) && PrevRev <> 0,
+        DIVIDE(CurrentRev - PrevRev, PrevRev),
+        BLANK()
+    )
+
+
+Trips MoM % =
+VAR CurrentTrips = [Total Trips]
+VAR PrevTrips    = CALCULATE([Total Trips], DATEADD(dim_time[date_actual], -1, MONTH))
+RETURN
+    IF(
+        NOT ISBLANK(PrevTrips) && PrevTrips <> 0,
+        DIVIDE(CurrentTrips - PrevTrips, PrevTrips),
+        BLANK()
+    )
+
+
+Revenue YTD =
+TOTALYTD([Gross Revenue], dim_time[date_actual])
+
+
+Trips YTD =
+TOTALYTD([Total Trips], dim_time[date_actual])
+
+
+Revenue Rolling 7D =
+CALCULATE(
+    [Gross Revenue],
+    DATESINPERIOD(dim_time[date_actual], LASTDATE(dim_time[date_actual]), -7, DAY)
+)
+
+
+// ---- PEAK HOUR ANALYSIS ---------------------------------------
+
+Peak Hour Trips =
+CALCULATE([Total Trips], fact_trips[is_peak_hour] = TRUE())
+
+
+Peak Hour Revenue =
+CALCULATE([Gross Revenue], fact_trips[is_peak_hour] = TRUE())
+
+
+Peak Hour Trip Share % =
+DIVIDE([Peak Hour Trips], [Total Trips])
+
+
+Surge Trip Count =
+CALCULATE([Total Trips], fact_trips[surge_multiplier] > 1.2)
+
+
+Surge Trip Share % =
+DIVIDE([Surge Trip Count], [Total Trips])
+
+
+Surge Revenue Premium =
+CALCULATE([Gross Revenue], fact_trips[surge_multiplier] > 1.2)
+- CALCULATE(
+    SUMX(fact_trips, fact_trips[base_fare]),
+    fact_trips[surge_multiplier] > 1.2
+  )
+
+
+// ---- ZONE-LEVEL MEASURES --------------------------------------
+
+Top Pickup Zone =
+TOPN(1, VALUES(dim_zones[zone_name]),
+    CALCULATE([Total Trips], USERELATIONSHIP(fact_trips[pickup_zone_id], dim_zones[zone_id]))
+)
+
+
+Zone Revenue Rank =
+RANKX(
+    ALL(dim_zones[zone_name]),
+    CALCULATE([Gross Revenue],
+        USERELATIONSHIP(fact_trips[pickup_zone_id], dim_zones[zone_id])
+    )
+)
+
+
+Zone Demand Index =
+VAR ZoneTrips  = [Total Trips]
+VAR TotalTrips = CALCULATE([Total Trips], ALL(dim_zones))
+RETURN DIVIDE(ZoneTrips, TotalTrips) * 100
+
+
+// ---- DRIVER PERFORMANCE MEASURES ------------------------------
+
+Active Drivers =
+DISTINCTCOUNT(fact_trips[driver_id])
+
+
+Trips per Driver =
+DIVIDE([Total Trips], [Active Drivers])
+
+
+Revenue per Driver =
+DIVIDE([Gross Revenue], [Active Drivers])
+
+
+Avg Driver Rating =
+AVERAGEX(
+    SUMMARIZE(fact_trips, fact_trips[driver_id],
+        "AvgRating", AVERAGE(fact_trips[rating_by_rider])
+    ),
+    [AvgRating]
+)
+
+
+Top 10% Driver Revenue =
+CALCULATE(
+    [Driver Payouts],
+    TOPN(
+        ROUNDUP([Active Drivers] * 0.1, 0),
+        VALUES(fact_trips[driver_id]),
+        CALCULATE([Driver Payouts])
+    )
+)
+
+
+// ---- VEHICLE CATEGORY MIX -------------------------------------
+
+UberX Share % =
+DIVIDE(
+    CALCULATE([Total Trips], fact_trips[vehicle_type] = "uberx"),
+    [Total Trips]
+)
+
+
+Comfort Share % =
+DIVIDE(
+    CALCULATE([Total Trips], fact_trips[vehicle_type] = "comfort"),
+    [Total Trips]
+)
+
+
+XL Share % =
+DIVIDE(
+    CALCULATE([Total Trips], fact_trips[vehicle_type] = "xl"),
+    [Total Trips]
+)
+
+
+// ---- OPERATIONAL EFFICIENCY -----------------------------------
+
+Revenue per KM =
+DIVIDE([Gross Revenue], SUM(fact_trips[trip_distance_km]))
+
+
+Revenue per Minute =
+DIVIDE([Gross Revenue], SUM(fact_trips[duration_minutes]))
+
+
+Completion Rate % =
+-- Proxy: trips with a valid rating / total trips dispatched
+DIVIDE(
+    CALCULATE([Total Trips], NOT ISBLANK(fact_trips[rating_by_rider])),
+    [Total Trips]
+)
