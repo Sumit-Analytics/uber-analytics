@@ -5,7 +5,7 @@ End-to-end data analytics pipeline for Uber trip data.
 # Uber Analytics — ETL · PostgreSQL · Power BI
 
 ## Dashboard Preview
-![Uber Analytics Dashboard](assets/dashboard.png)
+![Uber Analytics Dashboard](uber_analytics.pdf)
 
 ## Stack
 - Python 3.12 (pandas, SQLAlchemy, psycopg2)
